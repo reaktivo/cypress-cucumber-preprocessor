@@ -92,10 +92,12 @@ const transform = file => {
 };
 
 const preprocessor = pluginOptions => file => {
-  const options = {
-    browserifyOptions: browserify.defaultOptions,
-    ...pluginOptions
-  };
+  const options = Object.assign(
+    {
+      browserifyOptions: browserify.defaultOptions
+    },
+    pluginOptions
+  );
   if (options.browserifyOptions.transform.indexOf(transform) === -1) {
     options.browserifyOptions.transform.unshift(transform);
   }
