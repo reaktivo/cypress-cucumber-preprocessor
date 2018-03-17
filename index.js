@@ -1,5 +1,6 @@
 /* eslint-disable no-eval */
 const fs = require("fs");
+const path = require("path");
 const { EventEmitter } = require("events");
 const through = require("through");
 
@@ -9,6 +10,15 @@ const log = require("debug")("cypress:cucumber");
 const glob = require("glob");
 
 const watchers = {};
+
+const safeRequire = module => {
+  try {
+    // eslint-disable-next-line global-require, import/no-dynamic-require
+    return require(module);
+  } catch (e) {
+    return {};
+  }
+};
 
 // This is the template for the file that we will send back to cypress instead of the text of a
 // feature file
@@ -27,16 +37,12 @@ const createCucumber = (spec, definitions) =>
 
 const createPattern = () => {
   const appRoot = process.cwd();
-  const cypressOptions = JSON.parse(
-    fs.readFileSync(`${appRoot}/cypress.json`, "utf-8")
-  );
-
-  if (cypressOptions && cypressOptions.fileServerFolder) {
-    return `${
-      cypressOptions.fileServerFolder
-    }/support/step_definitions/**/*.js`;
-  }
-  return `${appRoot}/cypress/support/step_definitions/**/*.js`;
+  const cucumberOptions = safeRequire(path.join(appRoot, "cypress-cucumber"));
+  const stepDefinitionsPattern =
+    cucumberOptions.stepDefinitionsPattern ||
+    "/cypress/support/step_definitions/**/*.js";
+  console.log(path.join(appRoot, stepDefinitionsPattern));
+  return path.join(appRoot, stepDefinitionsPattern);
 };
 
 const pattern = createPattern();
@@ -85,7 +91,11 @@ const transform = file => {
   return through(write, end);
 };
 
-const preprocessor = (options = browserify.defaultOptions) => file => {
+const preprocessor = pluginOptions => file => {
+  const options = {
+    browserifyOptions: browserify.defaultOptions,
+    ...pluginOptions
+  };
   if (options.browserifyOptions.transform.indexOf(transform) === -1) {
     options.browserifyOptions.transform.unshift(transform);
   }
